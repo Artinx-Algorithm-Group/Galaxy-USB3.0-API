@@ -48,13 +48,13 @@ int main(int argc, char const *argv[]){
 
     status = cam.SetFrameRate(kFrameRate);
     if(status != GX_STATUS_SUCCESS){
-        cerr << "CameraInit fail" << endl;
+        cerr << "Set exposure time fail" << endl;
         return EXIT_FAILURE;
     }
 
     status = cam.CameraStreamOn();
     if(status != GX_STATUS_SUCCESS){
-        cerr << "CameraInit fail" << endl;
+        cerr << "Turn on camera stream fail" << endl;
         return EXIT_FAILURE;
     }
 
