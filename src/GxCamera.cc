@@ -497,10 +497,14 @@ GX_STATUS Camera::CameraClose(){
     this->DeallocImgBufferMem();
 
     GX_STATUS emStatus = GX_STATUS_SUCCESS;
-    emStatus = this->CameraCloseDevice();
-    if(emStatus != GX_STATUS_SUCCESS){
-        cerr << "[GxCamera] Close camera fail" << endl;
-        return emStatus;
+
+    if(this->is_lib_init_){
+        emStatus = this->CameraCloseDevice();
+        if(emStatus != GX_STATUS_SUCCESS){
+            cerr << "[GxCamera] Close camera fail" << endl;
+            return emStatus;
+        }
+        this->is_lib_init_ = false;
     }
 
     return emStatus;
