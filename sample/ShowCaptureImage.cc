@@ -34,7 +34,7 @@ int main(int argc, char const *argv[]){
     GX_STATUS status;
 
     Camera cam;
-    status = cam.CameraInit();
+    status = cam.CameraInit(true);
     if(status != GX_STATUS_SUCCESS){
         cerr << "CameraInit fail" << endl;
         return EXIT_FAILURE;
@@ -61,6 +61,7 @@ int main(int argc, char const *argv[]){
     signal(SIGINT, SigintHandler);
     Mat img;
     while (!stop_flag){
+        cam.SendSoftTrigger();
         cam.GetLatestColorImg(img);
         imshow("test", img);
         waitKey(1);

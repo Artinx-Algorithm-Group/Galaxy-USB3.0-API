@@ -24,8 +24,9 @@ namespace{
 // Initialize static member
 bool Camera::is_lib_init_ = false;
 
-GX_STATUS Camera::CameraInit(){
+GX_STATUS Camera::CameraInit(bool enable_soft_trigger){
     GX_STATUS emStatus = GX_STATUS_SUCCESS;
+    this->is_soft_trigger_mode_  = enable_soft_trigger;
 
     // Init
     emStatus = this->CameraOpenDevice();
@@ -59,8 +60,9 @@ GX_STATUS Camera::CameraInit(){
 
 }
 
-GX_STATUS Camera::CameraInit(char *serial_num){
+GX_STATUS Camera::CameraInit(char *serial_num, bool enable_soft_trigger){
     GX_STATUS emStatus = GX_STATUS_SUCCESS;
+    this->is_soft_trigger_mode_  = enable_soft_trigger;
 
     // Init
     emStatus = this->CameraOpenDevice(serial_num);
@@ -179,6 +181,23 @@ GX_STATUS Camera::CameraOpenDevice(char *serial_num) {
     return emStatus;
 }
 
+GX_STATUS Camera::SendSoftTrigger(){
+    GX_STATUS emStatus = GX_STATUS_SUCCESS;
+    try{
+        emStatus = GXSendCommand(this->device_handle_, GX_COMMAND_TRIGGER_SOFTWARE);
+        if (emStatus != GX_STATUS_SUCCESS){
+            throw GxException(emStatus);
+        }
+    }catch(const std::exception& e){
+        cerr << "[GxCamera] Send soft trigger fail" << endl;
+        cerr << e.what() << endl;
+        return emStatus;
+    }
+
+    return emStatus;
+    
+}
+
 GX_STATUS Camera::GetLatestColorImg(cv::Mat &color_img){
     GX_STATUS emStatus = GX_STATUS_SUCCESS;
     PGX_FRAME_BUFFER frame_buffer[kAcquireBufferNum];
@@ -204,7 +223,7 @@ GX_STATUS Camera::GetLatestColorImg(cv::Mat &color_img){
             throw GxException(emStatus);  
         }
     }catch(const GxException& e){
-        cerr << "[Galaxy] Get latest color image fail" << endl;
+        cerr << "[GxCamera] Get latest color image fail" << endl;
         cerr << e.what() << endl;
         return emStatus;
     }
@@ -383,7 +402,12 @@ GX_STATUS Camera::SetWorkingProperties(){
         }
 
         //Set trigger mode
-        emStatus = GXSetEnum(this->device_handle_, GX_ENUM_TRIGGER_MODE, GX_TRIGGER_MODE_OFF);
+        if(this->is_soft_trigger_mode_){
+            emStatus = GXSetEnum(this->device_handle_, GX_ENUM_TRIGGER_MODE, GX_TRIGGER_MODE_ON);
+        }else{
+            emStatus = GXSetEnum(this->device_handle_, GX_ENUM_TRIGGER_MODE, GX_TRIGGER_MODE_OFF);
+        }
+        
         if(emStatus != GX_STATUS_SUCCESS){
             throw GxException(emStatus);
         }

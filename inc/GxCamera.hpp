@@ -23,8 +23,8 @@ class Camera{
 
 public:
 
-    GX_STATUS CameraInit();
-    GX_STATUS CameraInit(char *serial_num);
+    GX_STATUS CameraInit(bool enable_soft_trigger);
+    GX_STATUS CameraInit(char *serial_num, bool enable_soft_trigger);
 
     GX_STATUS SetExposureTime(double exposure_time);
     GX_STATUS SetFrameRate(double frame_rate);
@@ -34,6 +34,7 @@ public:
 
     GX_STATUS CameraClose();
 
+    GX_STATUS SendSoftTrigger();
     GX_STATUS GetLatestColorImg(cv::Mat &color_img);
 
     static bool is_lib_init_;
@@ -53,6 +54,8 @@ private:
 
     void AllocImgBufferMem();
     void DeallocImgBufferMem();
+
+    bool is_soft_trigger_mode_ = false;
 
     int64_t color_filter_ = GX_COLOR_FILTER_NONE;
     int64_t payload_size_ = 0;
