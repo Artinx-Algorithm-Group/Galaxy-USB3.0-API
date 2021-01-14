@@ -627,7 +627,7 @@ GX_STATUS Camera::SetFrameRate(double frame_rate){
             throw GxException(emStatus);
         }
 
-        cout << "[GxCamera] Current camera frame rate: " << current_frame_rate << endl;
+        cout << "[GxCamera] Actual camera frame rate set to: " << current_frame_rate << endl;
         
     }catch(const GxException& e){
         cerr << e.what() << endl;
