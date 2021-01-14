@@ -447,11 +447,17 @@ GX_STATUS Camera::SetWorkingProperties(){
             }
         }
 
-        //Set Balance White Mode : Continuous
-        emStatus = GXSetEnum(this->device_handle_, GX_ENUM_BALANCE_WHITE_AUTO, GX_BALANCE_WHITE_AUTO_CONTINUOUS);
-        if(emStatus != GX_STATUS_SUCCESS){
-            throw GxException(emStatus);
-        }
+        // Set Balance White Mode : Continuous as default
+        // emStatus = GXSetEnum(this->device_handle_, GX_ENUM_BALANCE_WHITE_AUTO, GX_BALANCE_WHITE_AUTO_CONTINUOUS);
+        // if(emStatus != GX_STATUS_SUCCESS){
+        //     throw GxException(emStatus);
+        // }
+
+        // Set auto exposure as default
+        // emStatus = GXSetEnum(this->device_handle_, GX_ENUM_EXPOSURE_AUTO, GX_EXPOSURE_AUTO_CONTINUOUS);
+        // if(emStatus != GX_STATUS_SUCCESS){
+        //     throw GxException(emStatus);
+        // }
 
     }catch(const GxException& e){
         cerr << e.what() << endl;
@@ -576,6 +582,20 @@ GX_STATUS Camera::SetExposureTime(double exposure_time){
             
             return emStatus;
         }
+
+        emStatus = GXSetFloat(this->device_handle_, GX_FLOAT_EXPOSURE_TIME, exposure_time);
+        if(emStatus != GX_STATUS_SUCCESS){
+            throw GxException(emStatus);
+        }
+
+        double current_exp;
+        emStatus = GXGetFloat(this->device_handle_, GX_FLOAT_EXPOSURE_TIME, &current_exp);
+        if(emStatus != GX_STATUS_SUCCESS){
+            throw GxException(emStatus);
+        }
+
+        cout << "[GxCamera] Current camera exposure time: " << current_exp << endl;
+
     }catch(const GxException& e){
         cerr << e.what() << endl;
         cerr << "[GxCamera] Set exposure time fail" << endl;
@@ -600,6 +620,14 @@ GX_STATUS Camera::SetFrameRate(double frame_rate){
         if(emStatus != GX_STATUS_SUCCESS){
             throw GxException(emStatus);
         }
+
+        double current_frame_rate;
+        emStatus = GXGetFloat(this->device_handle_, GX_FLOAT_ACQUISITION_FRAME_RATE, &current_frame_rate);
+        if(emStatus != GX_STATUS_SUCCESS){
+            throw GxException(emStatus);
+        }
+
+        cout << "[GxCamera] Current camera frame rate: " << current_frame_rate << endl;
         
     }catch(const GxException& e){
         cerr << e.what() << endl;

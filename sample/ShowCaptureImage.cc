@@ -11,12 +11,13 @@ using std::endl;
 using cv::Mat;
 using cv::imshow;
 using cv::waitKey;
+using cv::cvtColor;
 
 using GxCamera::Camera;
 
 namespace {
-    const double kExposureTime = 8000.0;
-    const double kFrameRate = 120.0;
+    const double kExposureTime = 15000.0;
+    const double kFrameRate = 200.0;
 
     // c-style string serial number for code compatibility
     // char left_cam_serial_num[] = "KE0200080465";
@@ -30,25 +31,25 @@ void SigintHandler(int sig) {
     cout << "SIGINT received, exiting" << endl;
 }
 
-int main(int argc, char const *argv[]){
+int main(){
     GX_STATUS status;
 
     Camera cam;
     status = cam.CameraInit(true);
     if(status != GX_STATUS_SUCCESS){
-        cerr << "CameraInit fail" << endl;
+        cerr << "CameraInit fail " << endl;
         return EXIT_FAILURE;
     }
 
     status = cam.SetExposureTime(kExposureTime);
     if(status != GX_STATUS_SUCCESS){
-        cerr << "CameraInit fail" << endl;
+        cerr << "Set exposure time fail" << endl;
         return EXIT_FAILURE;
     }
 
     status = cam.SetFrameRate(kFrameRate);
     if(status != GX_STATUS_SUCCESS){
-        cerr << "Set exposure time fail" << endl;
+        cerr << "Set frame rate fail" << endl;
         return EXIT_FAILURE;
     }
 
@@ -63,6 +64,9 @@ int main(int argc, char const *argv[]){
     while (!stop_flag){
         cam.SendSoftTrigger();
         cam.GetLatestColorImg(img);
+
+        cvtColor(img, img, cv::COLOR_RGB2GRAY);
+
         imshow("test", img);
         waitKey(1);
     }
