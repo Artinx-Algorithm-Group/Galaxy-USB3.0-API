@@ -448,10 +448,10 @@ GX_STATUS Camera::SetWorkingProperties(){
         }
 
         // Set Balance White Mode : Continuous as default
-        // emStatus = GXSetEnum(this->device_handle_, GX_ENUM_BALANCE_WHITE_AUTO, GX_BALANCE_WHITE_AUTO_CONTINUOUS);
-        // if(emStatus != GX_STATUS_SUCCESS){
-        //     throw GxException(emStatus);
-        // }
+        emStatus = GXSetEnum(this->device_handle_, GX_ENUM_BALANCE_WHITE_AUTO, GX_BALANCE_WHITE_AUTO_CONTINUOUS);
+        if(emStatus != GX_STATUS_SUCCESS){
+            throw GxException(emStatus);
+        }
 
         // Set auto exposure as default
         // emStatus = GXSetEnum(this->device_handle_, GX_ENUM_EXPOSURE_AUTO, GX_EXPOSURE_AUTO_CONTINUOUS);
@@ -622,7 +622,7 @@ GX_STATUS Camera::SetFrameRate(double frame_rate){
         }
 
         double current_frame_rate;
-        emStatus = GXGetFloat(this->device_handle_, GX_FLOAT_ACQUISITION_FRAME_RATE, &current_frame_rate);
+        emStatus = GXGetFloat(this->device_handle_, GX_FLOAT_CURRENT_ACQUISITION_FRAME_RATE, &current_frame_rate);
         if(emStatus != GX_STATUS_SUCCESS){
             throw GxException(emStatus);
         }

@@ -28,6 +28,7 @@ public:
 
     GX_STATUS SetExposureTime(double exposure_time);
     GX_STATUS SetFrameRate(double frame_rate);
+    GX_STATUS SetWhileBalance();
 
     GX_STATUS CameraStreamOn();
     GX_STATUS CameraStreamOff();
