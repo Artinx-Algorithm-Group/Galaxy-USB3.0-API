@@ -12,6 +12,7 @@ using cv::Mat;
 using cv::Size;
 
 using GxCamera::Camera;
+using GxCamera::CameraParam;
 using GxCamera::GxException;
 using GxCamera::ImageFormatConvertStatus;
 
@@ -23,6 +24,46 @@ namespace{
 
 // Initialize static member
 bool Camera::is_lib_init_ = false;
+
+GX_STATUS Camera::CameraInit(const CameraParam &params){
+    GX_STATUS emStatus = GX_STATUS_SUCCESS;
+    this->is_soft_trigger_mode_  = params.enable_software_trigger;
+
+    // Init
+    if(!params.if_open_by_serialnum){
+        emStatus = this->CameraOpenDevice();
+    }else{
+        emStatus = 
+            this->CameraOpenDevice(const_cast<char *>(params.serial_num.c_str()));
+    }
+    if(emStatus != GX_STATUS_SUCCESS){
+        cerr << "[GxCamera] Camera open device fail" << endl;
+        return emStatus;
+    }
+
+    // Get info
+    emStatus = this->PrintCameraInfo();
+    if(emStatus != GX_STATUS_SUCCESS){
+        cerr << "[GxCamera] Print camera info fail" << endl;
+        return emStatus;
+    }
+
+    emStatus = this->CheckBasicProperties();
+    if(emStatus != GX_STATUS_SUCCESS){
+        cerr << "[GxCamera] Check basic properties fail" << endl;
+        return emStatus;
+    }
+
+    emStatus = this->SetWorkingProperties();
+    if(emStatus != GX_STATUS_SUCCESS){
+        cerr << "[GxCamera] Set working properties fail" << endl;
+        return emStatus;
+    }
+
+    this->AllocImgBufferMem();
+
+    return emStatus;
+}
 
 GX_STATUS Camera::CameraInit(bool enable_soft_trigger){
     GX_STATUS emStatus = GX_STATUS_SUCCESS;
@@ -391,6 +432,162 @@ GX_STATUS Camera::CheckBasicProperties(){
     return emStatus;
 }
 
+GX_STATUS Camera::SetWorkingProperties(const CameraParam &params){
+    GX_STATUS emStatus = GX_STATUS_SUCCESS;
+
+    try{
+        //Set acquisition mode
+        emStatus = GXSetEnum(this->device_handle_, GX_ENUM_ACQUISITION_MODE, GX_ACQ_MODE_CONTINUOUS);
+        if(emStatus != GX_STATUS_SUCCESS){
+            throw GxException(emStatus);
+        }
+
+        //Set trigger mode
+        if(this->is_soft_trigger_mode_){
+            emStatus = GXSetEnum(this->device_handle_, GX_ENUM_TRIGGER_MODE, GX_TRIGGER_MODE_ON);
+        }else{
+            emStatus = GXSetEnum(this->device_handle_, GX_ENUM_TRIGGER_MODE, GX_TRIGGER_MODE_OFF);
+        }
+        
+        if(emStatus != GX_STATUS_SUCCESS){
+            throw GxException(emStatus);
+        }
+
+        //Set buffer quantity of acquisition queue
+        uint64_t nBufferNum = kAcquireBufferNum;
+        emStatus = GXSetAcqusitionBufferNumber(this->device_handle_, nBufferNum);
+        if(emStatus != GX_STATUS_SUCCESS){
+            throw GxException(emStatus);
+        }
+
+        bool bStreamTransferSize = false;
+        emStatus = GXIsImplemented(this->device_handle_, GX_DS_INT_STREAM_TRANSFER_SIZE, &bStreamTransferSize);
+        if(emStatus != GX_STATUS_SUCCESS){
+            throw GxException(emStatus);
+        }
+
+        if(bStreamTransferSize){
+            //Set size of data transfer block
+            emStatus = GXSetInt(this->device_handle_, GX_DS_INT_STREAM_TRANSFER_SIZE, kAcquireTransferSize);
+            if(emStatus != GX_STATUS_SUCCESS){
+                throw GxException(emStatus);
+            }
+        }
+
+        bool bStreamTransferNumberUrb = false;
+        emStatus = GXIsImplemented(this->device_handle_, GX_DS_INT_STREAM_TRANSFER_NUMBER_URB, &bStreamTransferNumberUrb);
+        if(emStatus != GX_STATUS_SUCCESS){
+            throw GxException(emStatus);
+        }
+
+        if(bStreamTransferNumberUrb){
+            //Set qty. of data transfer block
+            emStatus = GXSetInt(this->device_handle_, GX_DS_INT_STREAM_TRANSFER_NUMBER_URB, kAcquireTransferNumberURB);
+            if(emStatus != GX_STATUS_SUCCESS){
+                throw GxException(emStatus);
+            }
+        }
+
+        // White balance config
+        if(params.enable_auto_white_balance){
+            emStatus = GXSetEnum(this->device_handle_, GX_ENUM_BALANCE_RATIO_SELECTOR, GX_BALANCE_RATIO_SELECTOR_RED);
+            if(emStatus != GX_STATUS_SUCCESS){
+                throw GxException(emStatus);
+            }
+            emStatus = GXSetEnum(this->device_handle_, GX_ENUM_AWB_LAMP_HOUSE, params.auto_wb_light_src);
+            if(emStatus != GX_STATUS_SUCCESS){
+                throw GxException(emStatus);
+            }
+            // Set continuous auto white balance
+            emStatus = GXSetEnum(this->device_handle_, GX_ENUM_BALANCE_WHITE_AUTO, GX_BALANCE_WHITE_AUTO_CONTINUOUS);
+            if(emStatus != GX_STATUS_SUCCESS){
+                throw GxException(emStatus);
+            }
+        }else{
+            // Set continuous auto white balance
+            emStatus = GXSetEnum(this->device_handle_, GX_ENUM_BALANCE_WHITE_AUTO, GX_BALANCE_WHITE_AUTO_OFF);
+            if(emStatus != GX_STATUS_SUCCESS){
+                throw GxException(emStatus);
+            }
+        }
+
+        // Auto exposure config
+        if(params.enable_auto_exposure){
+            emStatus = GXSetEnum(this->device_handle_, GX_ENUM_EXPOSURE_AUTO, GX_EXPOSURE_AUTO_CONTINUOUS);
+            if(emStatus != GX_STATUS_SUCCESS){
+                throw GxException(emStatus);
+            }
+            emStatus = GXSetFloat(this->device_handle_, GX_FLOAT_AUTO_EXPOSURE_TIME_MAX, params.auto_exposure_max);
+            if(emStatus != GX_STATUS_SUCCESS){
+                throw GxException(emStatus);
+            }
+            emStatus = GXSetEnum(this->device_handle_, GX_FLOAT_AUTO_EXPOSURE_TIME_MIN, params.auto_exposure_min);
+            if(emStatus != GX_STATUS_SUCCESS){
+                throw GxException(emStatus);
+            }
+        }else{
+            emStatus = GXSetEnum(this->device_handle_, GX_ENUM_EXPOSURE_MODE, GX_EXPOSURE_MODE_TIMED);
+            if(emStatus != GX_STATUS_SUCCESS){
+                throw GxException(emStatus);
+            }
+            emStatus = GXSetEnum(this->device_handle_, GX_ENUM_EXPOSURE_AUTO, GX_EXPOSURE_AUTO_OFF);
+            if(emStatus != GX_STATUS_SUCCESS){
+                throw GxException(emStatus);
+            }
+            emStatus = GXSetFloat(this->device_handle_, GX_FLOAT_EXPOSURE_TIME, params.exposure_time_no_auto);
+            if(emStatus != GX_STATUS_SUCCESS){
+                throw GxException(emStatus);
+            }
+        }
+
+        // Auto gain config
+        if(params.enable_auto_gain){
+            emStatus = GXSetEnum(this->device_handle_, GX_ENUM_GAIN_AUTO, GX_GAIN_AUTO_CONTINUOUS);
+            if(emStatus != GX_STATUS_SUCCESS){
+                throw GxException(emStatus);
+            }
+            emStatus = GXSetFloat(this->device_handle_, GX_FLOAT_AUTO_GAIN_MAX, params.auto_gain_max);
+            if(emStatus != GX_STATUS_SUCCESS){
+                throw GxException(emStatus);
+            }
+            emStatus = GXSetFloat(this->device_handle_, GX_FLOAT_AUTO_GAIN_MIN, params.auto_gain_min);
+            if(emStatus != GX_STATUS_SUCCESS){
+                throw GxException(emStatus);
+            }
+        }else{
+            emStatus = GXSetEnum(this->device_handle_,GX_ENUM_GAIN_AUTO,GX_GAIN_AUTO_OFF);
+            if(emStatus != GX_STATUS_SUCCESS){
+                throw GxException(emStatus);
+            }
+            emStatus = GXSetEnum(this->device_handle_,GX_ENUM_GAIN_SELECTOR,GX_GAIN_SELECTOR_ALL);
+            if(emStatus != GX_STATUS_SUCCESS){
+                throw GxException(emStatus);
+            }
+            emStatus = GXSetFloat(this->device_handle_, GX_FLOAT_GAIN, params.gain_no_auto);
+            if(emStatus != GX_STATUS_SUCCESS){
+                throw GxException(emStatus);
+            }
+        }
+
+        emStatus = GXSetInt(this->device_handle_, GX_INT_GRAY_VALUE, params.expected_gray_value);
+        if(emStatus != GX_STATUS_SUCCESS){
+            throw GxException(emStatus);
+        }
+
+    }catch(const GxException& e){
+        cerr << e.what() << endl;
+        GXCloseDevice(this->device_handle_);
+        this->device_handle_ = NULL;
+        cerr << "[GxCamera] Device closed" << endl;
+        GXCloseLib();
+        this->is_lib_init_ = false;
+        cerr << "[GxCamera] Library closed" << endl;
+        return emStatus;
+    }
+
+    return emStatus;
+}
+
 GX_STATUS Camera::SetWorkingProperties(){
     GX_STATUS emStatus = GX_STATUS_SUCCESS;
 
@@ -562,6 +759,38 @@ GX_STATUS Camera::CameraCloseDevice(){
     
     return emStatus;
 
+}
+
+double Camera::GetCurrentExpTime(){
+    GX_STATUS emStatus = GX_STATUS_SUCCESS;
+    double exp_time;
+    try{
+        emStatus = GXGetFloat(this->device_handle_, GX_FLOAT_EXPOSURE_TIME, &exp_time);
+        if(emStatus != GX_STATUS_SUCCESS){
+            throw GxException(emStatus);
+        }
+    }catch(const GxException& e){
+        cerr << e.what() << endl;
+        cerr << "[GxCamera] Get exposure time fail" << endl;
+    }
+
+    return exp_time;
+}
+
+double Camera::GetCurrentFrameRate(){
+    GX_STATUS emStatus = GX_STATUS_SUCCESS;
+    double frame_rate;
+    try{
+        emStatus = GXGetFloat(this->device_handle_, GX_FLOAT_CURRENT_ACQUISITION_FRAME_RATE, &frame_rate);
+        if(emStatus != GX_STATUS_SUCCESS){
+            throw GxException(emStatus);
+        }
+    }catch(const GxException& e){
+        cerr << e.what() << endl;
+        cerr << "[GxCamera] Get exposure time fail" << endl;
+    }
+
+    return frame_rate;
 }
 
 GX_STATUS Camera::SetExposureTime(double exposure_time){

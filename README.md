@@ -44,3 +44,7 @@ cd ..
 * Continus capture
 * Set camera exposure time
 * Set camera frame rate
+* Set exposure mode
+* Set gain mode
+
+> For detailed config, please see this [sample](./sample/ShowCaptureImage.cc) 
